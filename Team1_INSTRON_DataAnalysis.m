@@ -22,7 +22,7 @@ for k = 1:length(materials)
 end
 
 %% Organize Data:
-for k = 1:length(materials)-2
+for k = 1:length(materials)
     for n = 1:length(teamnames)
         data.(materials{k}).L0(1,n)   = (rawdata.(materials{k})(3,4*n-1));
         data.(materials{k}).Width(1,n) = (rawdata.(materials{k})(4,4*n-1));
@@ -62,10 +62,6 @@ end
     for n = 1:length(teamnames)
         Force = cell2mat(data.(materials{3}).Force{1,n});
         Pos  = cell2mat(data.(materials{3}).Pos{1,n});
-        
-        % Invert force/position data 
-        Force = -1.*Force;
-        Pos = -1.*Pos;
 
         % Zero force/position data
         Force = Force - Force(1);
