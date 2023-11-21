@@ -6,8 +6,8 @@
 clear; clc; close all;
 
 %% Define Data Parameters:
-materials = {'Silicone, Thin', 'Silicone, Thick', ...
-             'Skin, Raw', 'Skin, Treated'};
+materials = {'Silicone_Thin', 'Silicone_Thick', ...
+             'Skin_Raw', 'Skin_Treated'};
 teamnames = {'Wed01',  'Wed02',  'Wed03',  'Wed04', ...
              'Wed05',  'Wed06', 'Wed07', ...
              'Thurs01','Thurs02','Thurs03', 'Thurs04', ...
@@ -34,13 +34,14 @@ for k = 1:length(materials)
     end
 end
 
-%% Linearize data, do the math
+%% Linearize data, calculate material properties
 % I made this separate bc i kept getting weird index errors with the skeleton code
 % and it was easier to debug like this
-% basically if you need to use the version of the force/pos data that's
-% been cleaned up, use the linearize struct
+% basically any calcuations/modifications made to the original data end up
+% in the linearized struct
 for k = 1:length(materials)
     for n = 1:length(teamnames)
+        % load the data for a specific material and team
         Force = cell2mat(data.(materials{k}).Force{1,n});
         Pos  = cell2mat(data.(materials{k}).Pos{1,n});
 
@@ -61,6 +62,7 @@ for k = 1:length(materials)
             Force = Force(1:idx2-1);
             Pos = Pos(1:idx2-1);
         end
+
         % save the final versions of the force and pos arrays
         linearized.(materials{k}).Force{1,n} = Force;
         linearized.(materials{k}).Pos{1,n} = Pos;
@@ -90,11 +92,15 @@ for k = 1:length(materials)
         linearized.(materials{k}).E(1,n) = p2(1);
 
     end
+    [stdStiff, meanStiff] = std(linearized.(materials{k}).Stiffness(1:end));
+    [stdExt, meanExt] = std(linearized.(materials{k}).Extensibility(1:end));
+    [stdUTS, meanUTS] = std(linearized.(materials{k}).UltTenStrength(1:end));
+    [stdE, meanE] = std(linearized.(materials{k}).E(1:end));
 end
 
 %% Display Data:
 
-% Position and Force graphs
+%% Position and Force graphs
 figure(1);
 hold on
 for k = 1:length(materials)
@@ -114,7 +120,7 @@ for k = 1:length(materials)
 end
 hold off
 
-% Stress and Strain graphs
+%% Stress and Strain graphs
 figure(2);
 hold on
 for k = 1:length(materials)
@@ -133,49 +139,19 @@ for k = 1:length(materials)
     legend(teamnames, 'Location', 'Best');
 end
 
+%% Statistical analysis
+
+figure(3);
+hold on
+for k = 1:length(materials)
+    subplot(2,2,k);
+    labels = {"Young's Modulus", "Stiffness", "Extensibility", "Ultimate Tensile Strength"};
+    boxMatrix = cat(1, linearized.(materials{k}).E(1:end), linearized.(materials{k}).Stiffness(1:end), linearized.(materials{k}).Extensibility(1:end), linearized.(materials{k}).UltTenStrength(1:end));
+    boxchart(boxMatrix);
+end
+
 %% Useful Commands:
     % nanmean(cell2mat(data.Skin_Raw.Height)) --> Calculates the mean when
     % there are NaN entries in a matrix
 
     % gradient() --> computes the derivative of a dataset
-
-%% EXAMPLE OF SKIN_RAW PARTIAL ANALYSIS:
-% figure(2); clf;
-% hold on
-% for k = 1:length(materials)
-%     % make a 2x2 subplot where each graph is a dif material
-%     subplot(2,2,k);
-%     for n = 1:length(teamnames)
-%         Force = cell2mat(data.(materials{3}).Force{1,n});
-%         Pos  = cell2mat(data.(materials{3}).Pos{1,n});
-% 
-%         % Zero force/position data
-%         Force = Force - Force(1);
-%         Pos = Pos - Pos(1);
-% 
-%         % Determine if and where NaN entries exist in force/position data
-%         idx = find(isnan(Force), 1, 'first');
-%         Force = Force(1:idx-1);
-%         Pos = Pos(1:idx-1);
-% 
-%         % Crop off all values outside of linear range (You need to figure
-%         % this out! :))
-%         idx2 = find(Force == max(Force), 1, 'first');
-%         Force_linear = Force(1:idx2);
-%         Pos_linear = Pos(1:idx2);
-% 
-%         % Calculate linear regression of force/position data to determine
-%         % stiffness
-%         p = polyfit(Pos_linear, Force_linear, 1);
-%         Stiffness(1,n) = p(1);
-% 
-%         % Plot force/position data
-%         plot(Pos_linear, Force_linear);
-%         hold on
-%         title(strcat("Force_vs_Position_(", materials{3}, ")"), 'Interpreter', 'None');
-%         xlabel('Position (mm)');
-%         ylabel('Force (N)');
-%     end
-%     legend(teamnames, 'Location', 'Best');
-% end
-% hold off
