@@ -6,8 +6,8 @@
 clear; clc; close all;
 
 %% Define Data Parameters:
-materials = {'Silicone_Thin', 'Silicone_Thick', ...
-             'Skin_Raw', 'Skin_Treated'};
+materials = {'Silicone, Thin', 'Silicone, Thick', ...
+             'Skin, Raw', 'Skin, Treated'};
 teamnames = {'Wed01',  'Wed02',  'Wed03',  'Wed04', ...
              'Wed05',  'Wed06', 'Wed07', ...
              'Thurs01','Thurs02','Thurs03', 'Thurs04', ...
@@ -37,6 +37,8 @@ end
 %% Linearize data, do the math
 % I made this separate bc i kept getting weird index errors with the skeleton code
 % and it was easier to debug like this
+% basically if you need to use the version of the force/pos data that's
+% been cleaned up, use the linearize struct
 for k = 1:length(materials)
     for n = 1:length(teamnames)
         Force = cell2mat(data.(materials{k}).Force{1,n});
@@ -68,12 +70,24 @@ for k = 1:length(materials)
         linearized.(materials{k}).Stiffness(1,n) = p(1);
 
         % find stress
-        A = cell2mat(data.(materials{k}).Area(1,n));
-        linearized.(materials{k}).Stress{1,n} = Force./A;
+        A = cell2mat(data.(materials{k}).Area(1,n)); % note A is in mm2, aka 10^-6 m2
+        Stress = Force./A; % so stress will be in MPa (10^6 Pa)
+        linearized.(materials{k}).Stress{1,n} = Stress; 
 
         % find strain
         L0 = cell2mat(data.(materials{k}).L0(1,n));
-        linearized.(materials{k}).Strain{1,n} = Pos./L0;
+        Strain = Pos./L0;
+        linearized.(materials{k}).Strain{1,n} = Strain;
+
+        % find extensibility
+        linearized.(materials{k}).Extensibility(1,n) = 100.*max(Strain); % *100 to get a percentage
+
+        % ultimate tensile strength
+        linearized.(materials{k}).UltTenStrength(1,n) = max(Stress);
+
+        % Young's modulus
+        p2 = polyfit(Strain, Stress, 1);
+        linearized.(materials{k}).E(1,n) = p2(1);
 
     end
 end
@@ -92,7 +106,7 @@ for k = 1:length(materials)
 
         plot(Pos, Force);
         hold on
-        title(strcat("Force_vs_Position_(", materials{k}, ")"), 'Interpreter', 'None');
+        title(strcat("Force vs. Position (", materials{k}, ")"), 'Interpreter', 'None');
         xlabel('Position (mm)');
         ylabel('Force (N)');
     end
@@ -114,8 +128,9 @@ for k = 1:length(materials)
         hold on
         title(strcat("Stress vs. Strain (", materials{k},")"), 'Interpreter', 'None');
         xlabel("Strain");
-        ylabel("Stress");
+        ylabel("Stress (MPa)");
     end
+    legend(teamnames, 'Location', 'Best');
 end
 
 %% Useful Commands:
