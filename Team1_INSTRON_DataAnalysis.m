@@ -92,13 +92,13 @@ for k = 1:length(materials)
         linearized.(materials{k}).E(1,n) = p2(1);
 
     end
-    [stdStiff, meanStiff] = std(linearized.(materials{k}).Stiffness(1:end));
-    [stdExt, meanExt] = std(linearized.(materials{k}).Extensibility(1:end));
-    [stdUTS, meanUTS] = std(linearized.(materials{k}).UltTenStrength(1:end));
-    [stdE, meanE] = std(linearized.(materials{k}).E(1:end));
 end
 
 %% Display Data:
+
+% this makes the graph titles/labels look better
+matLabels = {'Silicone, Thin', 'Silicone, Thick', ...
+             'Skin, Raw', 'Skin, Treated'};
 
 %% Position and Force graphs
 figure(1);
@@ -112,7 +112,7 @@ for k = 1:length(materials)
 
         plot(Pos, Force);
         hold on
-        title(strcat("Force vs. Position (", materials{k}, ")"), 'Interpreter', 'None');
+        title(strcat("Force vs. Position (", matLabels{k}, ")"), 'Interpreter', 'None');
         xlabel('Position (mm)');
         ylabel('Force (N)');
     end
@@ -132,7 +132,7 @@ for k = 1:length(materials)
 
         plot(Strain, Stress);
         hold on
-        title(strcat("Stress vs. Strain (", materials{k},")"), 'Interpreter', 'None');
+        title(strcat("Stress vs. Strain (", matLabels{k},")"), 'Interpreter', 'None');
         xlabel("Strain");
         ylabel("Stress (MPa)");
     end
@@ -141,14 +141,78 @@ end
 
 %% Statistical analysis
 
+%% find mean, std for properties and init measurements
+for k = 1:length(materials)
+
+    % material properties
+    [stdStiff, meanStiff] = std(linearized.(materials{k}).Stiffness(1:end));
+    [stdExt, meanExt] = std(linearized.(materials{k}).Extensibility(1:end));
+    [stdUTS, meanUTS] = std(linearized.(materials{k}).UltTenStrength(1:end));
+    [stdE, meanE] = std(linearized.(materials{k}).E(1:end));
+    linearized.(materials{k}).YM_St_Ex_UTS(1:4) = [meanE meanStiff meanExt meanUTS];
+    linearized.(materials{k}).STD_YM_St_Ex_UTS(1:4) = [stdE stdStiff stdExt stdUTS];
+
+    % thickness, width, initial length
+    [stdThick, meanThick] = std(cell2mat(data.(materials{k}).Thickness(1:end)));
+    [stdWidth, meanWidth] = std(cell2mat(data.(materials{k}).Width(1:end)));
+    [stdL0, meanL0] = std(cell2mat(data.(materials{k}).L0(1:end)));
+    linearized.(materials{k}).ThWdL0(1:3) = [meanThick meanWidth meanL0];
+    linearized.(materials{k}).STD_ThWdL0(1:3) = [stdThick stdWidth stdL0];
+
+    dispTable = table([meanThick stdThick], [meanWidth stdWidth], [meanL0 stdL0], 'VariableNames', {'Thickness', 'Width', 'L0'});
+    disp(materials{k});
+    disp(dispTable);
+end
+
+
+%% Material properties box plots
 figure(3);
 hold on
-for k = 1:length(materials)
-    subplot(2,2,k);
-    labels = {"Young's Modulus", "Stiffness", "Extensibility", "Ultimate Tensile Strength"};
-    boxMatrix = cat(1, linearized.(materials{k}).E(1:end), linearized.(materials{k}).Stiffness(1:end), linearized.(materials{k}).Extensibility(1:end), linearized.(materials{k}).UltTenStrength(1:end));
-    boxchart(boxMatrix);
+labels = {"Young's Modulus", "Stiffness", "Extensibility", "Ultimate Tensile Strength (MPa)"};
+for i = 1:length(labels)
+    subplot(2,2,i);
+    barMatrix = [];
+    errorUpper = [];
+
+    for k = 1:length(materials)
+        % make a 1x4 matrix with the means of the values for each material
+        % in order
+        oldMatrix = barMatrix;
+        newData = linearized.(materials{k}).YM_St_Ex_UTS(i);
+        barMatrix = [oldMatrix newData];
+        % 1x4 matrix of the STdev of the values for each material
+        oldErr = errorUpper;
+        newErr = linearized.(materials{k}).STD_YM_St_Ex_UTS(i);
+        errorUpper = [oldErr newErr];
+    end
+
+    % set the minimum error bar value to 0
+    errorLower = errorUpper;
+    for n = 1:length(errorUpper)
+        if barMatrix(n)-errorLower(n)<0
+            errorLower(n) = barMatrix(n);
+        end
+    end
+
+    barGraph = bar(matLabels, barMatrix);
+    title(labels{i});
+
+    % add mean and std labels
+    for m = 1:length(labels)
+        toDisplay = {sprintf("%.4g", barMatrix(m)), " \pm " + sprintf("%.4g", errorUpper(m))};
+        text(barGraph.XEndPoints(m), barGraph.YEndPoints(m), toDisplay, ...
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
+    end
+
+    % add error bars
+    hold on
+    stdMarkers = errorbar(1:length(materials), barMatrix, errorLower, errorUpper);
+    stdMarkers.Color = [0 0 0];
+    stdMarkers.LineStyle = 'none';
+    hold off
 end
+hold off
+
 
 %% Useful Commands:
     % nanmean(cell2mat(data.Skin_Raw.Height)) --> Calculates the mean when
