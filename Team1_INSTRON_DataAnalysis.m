@@ -159,18 +159,46 @@ for k = 1:length(materials)
     linearized.(materials{k}).ThWdL0(1:3) = [meanThick meanWidth meanL0];
     linearized.(materials{k}).STD_ThWdL0(1:3) = [stdThick stdWidth stdL0];
 
-    dispTable = table([meanThick stdThick], [meanWidth stdWidth], [meanL0 stdL0], 'VariableNames', {'Thickness', 'Width', 'L0'});
-    disp(materials{k});
-    disp(dispTable);
 end
 
+%% ANOVA
+
+% empty matrices to compile data in correct format for ANOVA1()
+EMat = [];
+StiffMat = [];
+ExtMat = [];
+UTSMat = [];
+
+% put data into matrices in correct format
+for k = 1:length(materials)
+    EMat = [EMat, linearized.(materials{k}).E(1:end)'];
+    StiffMat = [StiffMat, linearized.(materials{k}).Stiffness(1:end)'];
+    ExtMat = [ExtMat, linearized.(materials{k}).Extensibility(1:end)'];
+    UTSMat = [UTSMat, linearized.(materials{k}).UltTenStrength(1:end)'];
+end
+
+% perform ANOVA
+[pE, tblE, statE] = anova1(EMat, materials, 'off');
+[pStiff, tblStiff, statStiff] = anova1(StiffMat, materials, 'off');
+[pExt, tblExt, statExt] = anova1(ExtMat, materials, 'off');
+[pUTS, tblUTS, statUTS] = anova1(UTSMat, materials, 'off');
+
+% multiple comparison tests
+[compE, mE, hE, gE] = multcompare(statE);
+[compStiff, mStiff, hStiff, gStiff] = multcompare(statStiff);
+[compExt, mExt, hExt, gExt] = multcompare(statExt);
+[compUTS, mUTS, hUTS, gUTS] = multcompare(statUTS);
+
+% comp = [group1, group2, CI1, dif in mean, CI2, p]
+
+compAll = {compE, compStiff, compExt, compUTS};
 
 %% Material properties box plots
-figure(3);
-hold on
+
 labels = {"Young's Modulus", "Stiffness", "Extensibility", "Ultimate Tensile Strength (MPa)"};
 for i = 1:length(labels)
-    subplot(2,2,i);
+    figure(i+3);
+    hold on
     barMatrix = [];
     errorUpper = [];
 
@@ -203,7 +231,7 @@ for i = 1:length(labels)
         text(barGraph.XEndPoints(m), barGraph.YEndPoints(m), toDisplay, ...
             'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
     end
-
+    
     % add error bars
     hold on
     stdMarkers = errorbar(1:length(materials), barMatrix, errorLower, errorUpper);
@@ -211,7 +239,6 @@ for i = 1:length(labels)
     stdMarkers.LineStyle = 'none';
     hold off
 end
-hold off
 
 
 %% Useful Commands:
