@@ -110,7 +110,7 @@ for k = 1:length(materials)
         Force = linearized.(materials{k}).Force{1,n};
         Pos  = linearized.(materials{k}).Pos{1,n};
 
-        plot(Pos, Force);
+        plot(Pos, Force, 'LineWidth', 1);
         hold on
         title(strcat("Force vs. Position (", matLabels{k}, ")"), 'Interpreter', 'None');
         xlabel('Position (mm)');
@@ -130,7 +130,7 @@ for k = 1:length(materials)
         Stress = linearized.(materials{k}).Stress{1,n};
         Strain = linearized.(materials{k}).Strain{1,n};
 
-        plot(Strain, Stress);
+        plot(Strain, Stress, 'LineWidth', 1);
         hold on
         title(strcat("Stress vs. Strain (", matLabels{k},")"), 'Interpreter', 'None');
         xlabel("Strain");
@@ -184,10 +184,10 @@ end
 [pUTS, tblUTS, statUTS] = anova1(UTSMat, materials, 'off');
 
 % multiple comparison tests
-[compE, mE, hE, gE] = multcompare(statE);
-[compStiff, mStiff, hStiff, gStiff] = multcompare(statStiff);
-[compExt, mExt, hExt, gExt] = multcompare(statExt);
-[compUTS, mUTS, hUTS, gUTS] = multcompare(statUTS);
+[compE, mE, hE, gE] = multcompare(statE, 'Display', 'off');
+[compStiff, mStiff, hStiff, gStiff] = multcompare(statStiff, 'Display', 'off');
+[compExt, mExt, hExt, gExt] = multcompare(statExt, 'Display', 'off');
+[compUTS, mUTS, hUTS, gUTS] = multcompare(statUTS, 'Display', 'off');
 
 % comp = [group1, group2, CI1, dif in mean, CI2, p]
 
@@ -229,9 +229,31 @@ for i = 1:length(labels)
     for m = 1:length(labels)
         toDisplay = {sprintf("%.4g", barMatrix(m)), " \pm " + sprintf("%.4g", errorUpper(m))};
         text(barGraph.XEndPoints(m), barGraph.YEndPoints(m), toDisplay, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom');
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'FontSize', 14);
     end
     
+    % add color-coded brackets for p vals btwn each group
+    % this part took me longer than the rest combined
+    bct = 0.9;
+    colors = {"#0072BD", "#D95319", "#EDB120", "#7E2F8E", "#77AC30", "#4DBEEE"};
+    for q = 1:length(compAll{i})
+        if compAll{i}(q, 6)<0.05 % add bracket if p<0.05 for a particular comparison
+            % graphDim = [0.13 0.11 0.775 0.815]
+            g1 = 0.2.*compAll{i}(q,1);
+            g2 = 0.2.*compAll{i}(q,2);
+            xl1 = 0.775.*g1 + 0.13;
+            xl2 = 0.775.*g2 + 0.13;
+            % three lines = one bracket
+            annotation('line', [xl1 xl2], [bct bct], 'LineWidth', 2, 'Color', colors{q});
+            annotation('line', [xl1 xl1], [bct 0.8], 'LineWidth', 2, 'Color', colors{q});
+            annotation('line', [xl2 xl2], [bct 0.8], 'LineWidth', 2, 'Color', colors{q});
+            pVal = sprintf('p = %.4f', compAll{i}(q,6));
+            annotation('textbox', [0.1 bct 0.1 0.1], 'String', pVal, 'Color', colors{q}, ...
+                'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'FontSize', 16);
+            bct = bct - 0.02;
+        end
+    end
+
     % add error bars
     hold on
     stdMarkers = errorbar(1:length(materials), barMatrix, errorLower, errorUpper);
@@ -240,9 +262,3 @@ for i = 1:length(labels)
     hold off
 end
 
-
-%% Useful Commands:
-    % nanmean(cell2mat(data.Skin_Raw.Height)) --> Calculates the mean when
-    % there are NaN entries in a matrix
-
-    % gradient() --> computes the derivative of a dataset
