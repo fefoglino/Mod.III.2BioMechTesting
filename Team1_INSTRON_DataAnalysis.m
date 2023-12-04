@@ -237,7 +237,9 @@ compAll = {compE, compStiff, compExt, compUTS};
 
 %% Material properties box plots
 
-labels = {"Young's Modulus (MPa)", "Stiffness (MPa)", "Extensibility (%)", "Ultimate Tensile Strength (MPa)"};
+labels = {"Young's Modulus (MPa)", "Stiffness (N/mm)", "Extensibility (%)", "Ultimate Tensile Strength (MPa)"};
+newmat = {'Skin, Raw', 'Skin, Treated', ...
+             'Silicone, Thin', 'Silicone, Thick'};
 for i = 1:length(labels)
     figure(i+2);
     hold on
@@ -264,11 +266,9 @@ for i = 1:length(labels)
         end
     end
 
-    fliplab = flip(matLabels);
-
-    barGraph = bar(fliplab, barMatrix);
-    set(gca, 'FontSize', 24);
-    title(labels{i}, 'FontSize', 30);
+    barGraph = bar(newmat, barMatrix);
+    set(gca, 'FontSize', 30);
+    title(labels{i}, 'FontSize', 36);
 
     % add mean and std labels
     for m = 1:length(labels)
