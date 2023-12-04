@@ -39,6 +39,8 @@ end
 % and it was easier to debug like this
 % basically any calcuations/modifications made to the original data end up
 % in the linearized struct
+
+
 for k = 1:length(materials)
     for n = 1:length(teamnames)
         % load the data for a specific material and team
@@ -55,6 +57,14 @@ for k = 1:length(materials)
             Force = Force(1:idx-1);
             Pos = Pos(1:idx-1);
         end
+
+        % save a version of the data to use for graphs
+        linearized.(materials{k}).ForceGraph{1,n} = Force;
+        linearized.(materials{k}).PosGraph{1,n} = Pos;
+        A = cell2mat(data.(materials{k}).Area(1,n)); 
+        linearized.(materials{k}).StressGraph{1,n} = Force./A;
+        L0 = cell2mat(data.(materials{k}).L0(1,n));
+        linearized.(materials{k}).StrainGraph{1,n} = Pos./L0;
 
         % get rid of non-linear data only if max value comes before last value
         idx2 = find(Force == max(Force), 1, 'first');
@@ -103,40 +113,72 @@ matLabels = {'Silicone, Thin', 'Silicone, Thick', ...
 %% Position and Force graphs
 figure(1);
 hold on
-for k = 1:length(materials)
+for k = 1:2
+
+    ForceMat1 = NaN(9001, 14);
+    ForceMat2 = NaN(9001, 14);
+
     subplot(2,2,k);
+    a = k.*2-1;
+    b = k.*2;
 
+    hold on
     for n = 1:length(teamnames)
-        Force = linearized.(materials{k}).Force{1,n};
-        Pos  = linearized.(materials{k}).Pos{1,n};
+        Force1 = linearized.(materials{a}).ForceGraph{1,n};
+        Pos1  = linearized.(materials{a}).PosGraph{1,n};
+        Force2 = linearized.(materials{b}).ForceGraph{1,n};
+        Pos2  = linearized.(materials{b}).PosGraph{1,n};
 
-        plot(Pos, Force, 'LineWidth', 1);
+        ForceMat1(1:size(Force1), n) = Force1;
+        ForceMat2(1:size(Force2),n) = Force2;
+
+        p1 = plot(Pos1, Force1, Pos2, Force2);
         hold on
-        title(strcat("Force vs. Position (", matLabels{k}, ")"), 'Interpreter', 'None');
-        xlabel('Position (mm)');
-        ylabel('Force (N)');
+        title(strcat("Force vs. Position: ", matLabels{a}, " vs. ", matLabels{b}),'FontSize', 18);
+        xlabel('Position (mm)', 'FontSize', 16);
+        ylabel('Force (N)', 'FontSize', 16);
     end
-    legend(teamnames, 'Location', 'Best');
+    hold on
+    plotMean1 = mean(ForceMat1, 2, 'omitnan');
+    plotMean2 = mean(ForceMat2, 2, 'omitnan');
+    p2 = plot(Pos1, plotMean1(1:size(Pos1)), "LineWidth", 4);
+    p3 = plot(Pos2, plotMean2(1:size(Pos2)), "LineWidth", 4);
+    legend([p2 p3], {strcat("Mean, ", matLabels{a}), strcat("Mean, ", matLabels{b})});
 end
 hold off
 
 %% Stress and Strain graphs
 figure(2);
 hold on
-for k = 1:length(materials)
+for k = 1:2
     subplot(2,2,k);
 
-    for n = 1:length(teamnames)
-        Stress = linearized.(materials{k}).Stress{1,n};
-        Strain = linearized.(materials{k}).Strain{1,n};
+    StressMat1 = NaN(9001, 14);
+    StressMat2 = NaN(9001, 14);
+    a = k.*2-1;
+    b = k.*2;
 
-        plot(Strain, Stress, 'LineWidth', 1);
+    for n = 1:length(teamnames)
+        Stress1 = linearized.(materials{a}).StressGraph{1,n};
+        Strain1 = linearized.(materials{a}).StrainGraph{1,n};
+        Stress2 = linearized.(materials{b}).StressGraph{1,n};
+        Strain2 = linearized.(materials{b}).StrainGraph{1,n};
+
+        StressMat1(1:size(Stress1), n) = Stress1;
+        StressMat2(1:size(Stress2), n) = Stress2;
+
+        p1 = plot(Strain1, Stress1, Strain2, Stress2);
         hold on
-        title(strcat("Stress vs. Strain (", matLabels{k},")"), 'Interpreter', 'None');
-        xlabel("Strain");
-        ylabel("Stress (MPa)");
+        title(strcat("Stress vs. Strain: ", matLabels{a}, " vs. ", matLabels{b}), 'FontSize', 18);
+        xlabel("Strain", "FontSize", 16);
+        ylabel("Stress (MPa)", 'FontSize', 16);
     end
-    legend(teamnames, 'Location', 'Best');
+    hold on
+    plotMean1 = mean(StressMat1, 2, 'omitnan');
+    plotMean2 = mean(StressMat2, 2, 'omitnan');
+    p2 = plot(Strain1, plotMean1(1:size(Strain1)), "LineWidth", 4);
+    p3 = plot(Strain2, plotMean2(1:size(Strain2)), "LineWidth", 4);
+    legend([p2 p3], {strcat("Mean, ", matLabels{a}), strcat("Mean, ", matLabels{b})});
 end
 
 %% Statistical analysis
@@ -195,9 +237,9 @@ compAll = {compE, compStiff, compExt, compUTS};
 
 %% Material properties box plots
 
-labels = {"Young's Modulus", "Stiffness", "Extensibility", "Ultimate Tensile Strength (MPa)"};
+labels = {"Young's Modulus (MPa)", "Stiffness (MPa)", "Extensibility (%)", "Ultimate Tensile Strength (MPa)"};
 for i = 1:length(labels)
-    figure(i+3);
+    figure(i+2);
     hold on
     barMatrix = [];
     errorUpper = [];
@@ -222,14 +264,17 @@ for i = 1:length(labels)
         end
     end
 
-    barGraph = bar(matLabels, barMatrix);
-    title(labels{i});
+    fliplab = flip(matLabels);
+
+    barGraph = bar(fliplab, barMatrix);
+    set(gca, 'FontSize', 24);
+    title(labels{i}, 'FontSize', 30);
 
     % add mean and std labels
     for m = 1:length(labels)
         toDisplay = {sprintf("%.4g", barMatrix(m)), " \pm " + sprintf("%.4g", errorUpper(m))};
         text(barGraph.XEndPoints(m), barGraph.YEndPoints(m), toDisplay, ...
-            'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'FontSize', 14);
+            'HorizontalAlignment', 'center', 'VerticalAlignment', 'bottom', 'FontSize', 24);
     end
     
     % add color-coded brackets for p vals btwn each group
@@ -247,8 +292,8 @@ for i = 1:length(labels)
             annotation('line', [xl1 xl2], [bct bct], 'LineWidth', 2, 'Color', colors{q});
             annotation('line', [xl1 xl1], [bct 0.8], 'LineWidth', 2, 'Color', colors{q});
             annotation('line', [xl2 xl2], [bct 0.8], 'LineWidth', 2, 'Color', colors{q});
-            pVal = sprintf('p = %.4f', compAll{i}(q,6));
-            annotation('textbox', [0.1 bct 0.1 0.1], 'String', pVal, 'Color', colors{q}, ...
+            pVal = sprintf('p = %.7f', compAll{i}(q,6));
+            annotation('textbox', [0.11 bct 0.1 0.1], 'String', pVal, 'Color', colors{q}, ...
                 'EdgeColor', 'none', 'HorizontalAlignment', 'right', 'VerticalAlignment', 'bottom', 'FontSize', 16);
             bct = bct - 0.02;
         end
