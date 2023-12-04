@@ -238,8 +238,7 @@ compAll = {compE, compStiff, compExt, compUTS};
 %% Material properties box plots
 
 labels = {"Young's Modulus (MPa)", "Stiffness (N/mm)", "Extensibility (%)", "Ultimate Tensile Strength (MPa)"};
-newmat = {'Skin, Raw', 'Skin, Treated', ...
-             'Silicone, Thin', 'Silicone, Thick'};
+
 for i = 1:length(labels)
     figure(i+2);
     hold on
@@ -266,7 +265,7 @@ for i = 1:length(labels)
         end
     end
 
-    barGraph = bar(newmat, barMatrix);
+    barGraph = bar(matLabels, barMatrix);
     set(gca, 'FontSize', 30);
     title(labels{i}, 'FontSize', 36);
 
